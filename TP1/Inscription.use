@@ -1,0 +1,108 @@
+model Inscription
+
+--
+-- classes
+--
+
+class Etudiant
+    attributes
+        codePermanent: String
+end
+
+class GroupeCours
+    attributes
+        horaire: String
+        numero: Integer
+        sessionAnnee: Integer
+end
+
+class Enseignant
+    attributes
+        nom: String
+end
+
+class Thematique
+end
+
+class Cours
+    attributes
+        titre: String
+end
+
+--
+-- Associations
+--
+
+associationclass Inscription 
+    between
+        Etudiant [*] role etudiantsInscrits
+        GroupeCours [*] role coursSuivis
+    attributes
+        note: Integer
+end
+
+association edition between
+    Cours [1] role cours
+    GroupeCours [*] role groupeCoursOfferts
+end
+
+association dispense between
+    Enseignant [0..1] role enseignePar
+    GroupeCours [*] role coursDispenses
+end
+
+association specialites between
+    Thematique [1..*] role specialites
+    Enseignant [*] role specialistes
+end
+
+association sujet between
+    Thematique [1] role thematique
+    Cours [*] role coursPertinents
+end
+
+association cours between
+    Cours [*] role prerequis
+    Cours [*] role cours
+end
+
+--
+-- contraintes OCL
+--
+
+constraints
+
+context Cours
+    inv C1: not prerequis->includes(self)
+
+context Cours
+    inv C2: prerequis->forAll(p2 | p2 <> self implies
+            p2.prerequis->forAll(p3 | p3 <> p2 implies p3 <> self implies p3.prerequis->size = 0))
+
+context Etudiant
+    inv C3: coursSuivis->forAll(c | coursSuivis->select(c1 | 
+            c1.sessionAnnee = c.sessionAnnee)->size <= 5)
+
+context Enseignant
+    inv C4: coursDispenses->forAll(c | coursDispenses->select(c1 | 
+            c1.sessionAnnee = c.sessionAnnee)->size <= 4)
+
+context Enseignant
+    inv C5: coursDispenses->forAll(g | self.specialites->includes(g.cours.thematique))
+
+context Etudiant
+    inv C6: coursSuivis->forAll(g | 
+    g.cours.prerequis->forAll(c |
+    c.groupeCoursOfferts->exists(sessionAnnee < g.sessionAnnee and 
+    etudiantsInscrits->includes(self)) and 
+    c.prerequis->forAll(c1 | c1 <> c implies 
+    c1.groupeCoursOfferts->exists(sessionAnnee < g.sessionAnnee and 
+    etudiantsInscrits->includes(self)))))
+
+
+--    inv C6: coursSuivis->forAll(g | g.cours.prerequis->forAll(c |
+--    c.groupeCoursOfferts->forAll(g1 | g1.sessionAnnee < g.sessionAnnee implies 
+--    g1.etudiantsInscrits->includes(self)) and 
+--    c.prerequis->forAll(c1 | c1 <> c implies 
+--    c1.groupeCoursOfferts->forAll(g2 | g2.sessionAnnee < g.sessionAnnee implies 
+--    g2.etudiantsInscrits->includes(self)))))
